@@ -12,7 +12,7 @@ RANKING_CSV = Path(r"ranking.csv")
 CHASINGS_CSV = Path(r"chasings.csv")
 
 # Output directory for social maps.
-OUTPUT_DIR = Path(r"results_agonism")
+OUTPUT_DIR = Path(r"C:\Users\agorlewicz\Desktop\EcoHab\do chmury\results_agonism")
 
 # Analysis and plot settings.
 N_DARK_PHASES = None  # Use a positive integer or None to include all phases.
