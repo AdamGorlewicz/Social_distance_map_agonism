@@ -1,35 +1,3 @@
-from io import BytesIO
-from pathlib import Path
-from tempfile import TemporaryDirectory
-from threading import Lock
-from urllib.parse import quote
-from zipfile import ZIP_DEFLATED, ZipFile
-
-import matplotlib
-import streamlit as st
-
-matplotlib.use("Agg")
-
-from social_map_agonism import export_results, load_session
-
-
-@st.cache_resource
-def plot_lock():
-    return Lock()
-
-
-def analyze(ranking_bytes, chasing_bytes, phase_limit, session_name):
-    with TemporaryDirectory() as folder:
-        work_dir = Path(folder)
-        ranking = work_dir / "ranking.csv"
-        chasing = work_dir / "chasings.csv"
-        ranking.write_bytes(ranking_bytes)
-        chasing.write_bytes(chasing_bytes)
-
-        session = load_session(ranking, chasing, n_dark_phases=phase_limit)
-        session["session"] = session_name
-        output_dir = work_dir / "results"
-        with plot_lock():
             export_results(session, output_dir, close_figures=True)
 
         archive = BytesIO()
@@ -88,7 +56,7 @@ def main():
         ego = st.selectbox("Focal mouse", mice, key="focal_mouse")
         with ZipFile(BytesIO(archive)) as results:
             ego_id = quote(str(ego), safe="")
-            legend_col, map_col = st.columns([1, 3])
+            legend_col, map_col = st.columns([2, 3])
             with legend_col:
                 st.image(results.read("mouse_color_legend.png"))
             with map_col:
