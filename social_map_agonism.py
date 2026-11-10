@@ -8,8 +8,8 @@ from urllib.parse import quote
 
 
 # Input files for one session.
-RANKING_CSV = Path(r"C:\Users\agorlewicz\Desktop\EcoHab\do chmury\example data\ranking.csv")
-CHASINGS_CSV = Path(r"C:\Users\agorlewicz\Desktop\EcoHab\do chmury\example data\chasings.csv")
+RANKING_CSV = Path(r"ranking.csv")
+CHASINGS_CSV = Path(r"chasings.csv")
 
 # Output directory for social maps.
 OUTPUT_DIR = Path(r"C:\Users\agorlewicz\Desktop\EcoHab\do chmury\results_agonism")
