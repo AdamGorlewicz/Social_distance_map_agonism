@@ -42,13 +42,13 @@ def analyze(ranking_bytes, chasing_bytes, phase_limit, session_name):
 def main():
     st.set_page_config(page_title="Eco-HAB social distance map (agonism)")
     st.title("Eco-HAB social distance maps (agonism)")
-    st.write("Upload the ranking and chasing CSV exports from one recording session.")
+    st.write("Upload the ranking and chasing CSV files from one recording session.")
 
     with st.form("analysis"):
-        ranking = st.file_uploader("Ranking export (ranking.csv)", type="csv")
-        chasing = st.file_uploader("Chasing export (chasings.csv)", type="csv")
+        ranking = st.file_uploader("Ranking (.csv)", type="csv")
+        chasing = st.file_uploader("Chasing (.csv)", type="csv")
         session_name = st.text_input("Session name", value="Eco-HAB session")
-        phase_count = st.number_input(
+        phase_count = st.number_input( 
             "Maximum number of phase IDs (0 = all)",
             min_value=0,
             value=0,
