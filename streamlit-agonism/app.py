@@ -40,8 +40,8 @@ def analyze(ranking_bytes, chasing_bytes, phase_limit, session_name):
 
 
 def main():
-    st.set_page_config(page_title="Eco-HAB agonism maps")
-    st.title("Eco-HAB agonism maps")
+    st.set_page_config(page_title="Eco-HAB social distance map (agonism)")
+    st.title("Eco-HAB social distance maps (agonism)")
     st.write("Upload the ranking and chasing CSV exports from one recording session.")
 
     with st.form("analysis"):
