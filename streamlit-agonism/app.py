@@ -85,7 +85,7 @@ def main():
             file_name="agonism_results.zip",
             mime="application/zip",
         )
-        ego = st.selectbox("Focal mouse", mice, key="focal_mouse")
+        ego = st.selectbox("Ego", mice, key="focal_mouse")
         with ZipFile(BytesIO(archive)) as results:
             ego_id = quote(str(ego), safe="")
             legend_col, map_col = st.columns([2, 3])
