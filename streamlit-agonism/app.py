@@ -57,8 +57,7 @@ def main():
         submitted = st.form_submit_button("Generate social maps")
 
     st.caption(
-        "Ranking uses dark-phase labels when available. Chase totals are selected "
-        "by phase ID regardless of the label."
+        "Both rankings and chase counts must contain dark-phase data only."
     )
 
     if submitted:
