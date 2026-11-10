@@ -49,7 +49,7 @@ def main():
         chasing = st.file_uploader("Chasing (.csv)", type="csv")
         session_name = st.text_input("Session name", value="Eco-HAB session")
         phase_count = st.number_input( 
-            "Maximum number of phase IDs (0 = all)",
+            "Number of phases for analysis (0 = all)",
             min_value=0,
             value=0,
             step=1,
