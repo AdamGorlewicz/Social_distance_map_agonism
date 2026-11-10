@@ -48,7 +48,7 @@ def main():
         ranking = st.file_uploader("Ranking (.csv)", type="csv")
         chasing = st.file_uploader("Chasing (.csv)", type="csv")
         session_name = st.text_input("Session name", value="Eco-HAB session")
-        phase_count = st.number_input( 
+        phase_count = st.number_input(
             "Number of phases for analysis (0 = all)",
             min_value=0,
             value=0,
@@ -88,8 +88,11 @@ def main():
         ego = st.selectbox("Focal mouse", mice, key="focal_mouse")
         with ZipFile(BytesIO(archive)) as results:
             ego_id = quote(str(ego), safe="")
-            st.image(results.read(f"social_map_ego_{ego_id}.png"))
-            st.image(results.read("mouse_color_legend.png"))
+            legend_col, map_col = st.columns([1, 3])
+            with legend_col:
+                st.image(results.read("mouse_color_legend.png"))
+            with map_col:
+                st.image(results.read(f"social_map_ego_{ego_id}.png"))
 
 
 if __name__ == "__main__":
