@@ -1,64 +1,58 @@
-# Social maps of mice from agonistic interactions
+# Eco-HAB Social Maps from Agonism
 
-This Python script analyzes one Eco-HAB recording session from two CSV exports. It draws a social map for each focal mouse (ego). Each partner's position represents relative chasing activity and the difference in hierarchical rank. The length of the vector from the focal mouse to its partner defines the social distance.
+`social_map_agonism.py` generates a vector social map for each mouse using agonism and differences in hierarchical rank. It also exports pairwise matrices and a color legend.
 
 ## Installation
 
-Install the Python dependencies:
-
 ```bash
-python -m pip install numpy pandas "matplotlib>=3.5" openpyxl
+python -m pip install numpy pandas matplotlib seaborn openpyxl
 ```
 
-## Input data
+## Input files
 
-Export both files from the same Eco-HAB session. The script expects comma-separated files with the following column headers.
+Use two Eco-HAB CSV exports from the same recording session. Keep mouse IDs consistent across files.
 
-| File | Required columns | Contents |
-| --- | --- | --- |
-| `ranking.csv` | `animal_id`, `day`, `hour`, `mu` | Mouse ID, recording day and hour, and ranking score |
-| `chasings.csv` | `chaser`, `chased`, `chasings`, `day`, `hour`, `phase_count` | IDs of the chasing and chased mice, chase count, recording day and hour, and phase ID |
+| File | Required columns |
+| --- | --- |
+| `ranking.csv` | `animal_id`, `day`, `hour`, `phase`, `mu` |
+| `chasings.csv` | `day`, `hour`, `phase`, `phase_count`, `chaser`, `chased`, `chasings` |
 
-If `chasings.csv` has a `phase` column, the script uses only rows labeled `dark_phase` to match ranking records to phase IDs. Each matched `day` and `hour` combination must map to a single phase ID. Mouse IDs are read as text and must be consistent across the files. The analysis requires at least two mice present in both the phase-matched ranking and the chasing matrix.
+## Run the script
 
-## Running the script
-
-Save the script as `social_map_agonism.py` and replace the local paths at the top of the file. This example uses paths relative to the repository root.
+Edit the paths at the top of the script. For example, with both CSVs in a `data` folder relative to the working directory, use:
 
 ```python
-RANKING_CSV = Path("data/ranking.csv")
-CHASINGS_CSV = Path("data/chasings.csv")
-OUTPUT_DIR = Path("results_agonism")
-N_DARK_PHASES = None
-SCORE_COL = "mu"
+ranking_file = Path("data/ranking.csv")
+chasing_file = Path("data/chasings.csv")
+output_dir = Path("results_agonism")
 ```
 
-Run the following command from the repository root:
+Run from that working directory:
 
 ```bash
 python social_map_agonism.py
 ```
 
-If you keep the original filename, run `python "social_map_agonism(6).py"`. The script creates the output directory if needed and overwrites existing files with the same names. Use a separate `OUTPUT_DIR` for each session to keep its results.
+The script creates the output directory if needed, saves the results, and displays the figures.
 
-With `N_DARK_PHASES = None`, each calculation uses all phase IDs available to it. A positive integer limits each calculation to that many phase IDs in ascending order. The ranking and chasing calculations select phase IDs independently. The chasing matrix includes all rows with the selected `phase_count` values regardless of their `phase` label. To restrict both calculations to dark phases, supply a `chasings.csv` containing only dark-phase records.
+## Calculations
 
-## Method
+**Ranking.** The script matches ranking records to phase counts by day, hour, and phase label. Within each matched phase, it averages each mouse’s `mu` scores and ranks mice from highest to lowest, using average ranks for ties. Each mouse’s mean rank is the average across phases with available scores. Both light and dark phases are included when available.
 
-The script calculates the following quantities for each ordered pair of distinct mice. The index $i$ denotes the focal mouse and $j$ denotes its partner.
+**Agonism.** For each ordered pair, sum all chases from the focal mouse to its partner. The cohort mean includes every ordered pair of distinct mice in the chasing data, with zero counts for pairs without recorded chases. The normalized coordinate is `A = (pair value − cohort mean) / (pair value + cohort mean)`. A value of zero corresponds to the cohort mean. Negative and positive values indicate pair values below and above it, respectively.
 
-1. **Relative agonism.** Let $C_{ij}$ be the total number of chases initiated by $i$ toward $j$. Pairs with no recorded chases have a count of zero. The focal mouse's mean $\bar{C}_i$ includes all other mice in the analysis cohort, including partners with zero chases. For a positive mean, the script computes $c_{ij}=C_{ij}/\bar{C}_i$ and $A_{ij}=(c_{ij}-1)/(c_{ij}+1)$. A value of $-1$ indicates zero chases, $0$ indicates a count equal to the focal mouse's mean, and positive values indicate above-average counts.
-2. **Relative power.** Within each matched phase, the script averages the available hourly $\mu$ scores for each mouse and ranks the means in descending order. The highest mean receives rank 1, and ties receive the average of the occupied ranks. The script then averages each mouse's available phase ranks to obtain $R_i$. Phase ranks are calculated before restricting the analysis to the shared cohort. For a cohort of $N$ mice, relative power is $P_{ij}=(R_i-R_j)/(N-1)$. A positive value indicates that the partner ranks higher on average than the focal mouse.
-3. **Social distance.** The focal mouse is at $(0,0)$ and its partner is at $(A_{ij},P_{ij})$. The distance $D_{ij}=\sqrt{A_{ij}^2+P_{ij}^2}$ is dimensionless and can change when the focal mouse and partner swap roles. If the focal mouse's mean chase count is zero, its agonism and distance values are undefined.
+**Power and social distance.** Maps use mice present in both the mean ranking and the interaction matrix. For focal mouse `i` and partner `j`, power is `P = (rank_i − rank_j) / (N − 1)`, where `N` is the number of mice included in the maps. At least two shared mice are needed. Each arrow starts at `(0, 0)` and ends at `(A, P)`. Its length is `sqrt(A² + P²)`. Distance can differ between the two directions of a pair.
 
 ## Output files
 
 | File | Contents |
 | --- | --- |
-| `agonism.xlsx` | Relative agonism matrix |
-| `power.xlsx` | Normalized rank difference matrix |
-| `social_distance.xlsx` | Social distance matrix |
-| `social_map_ego_<ID>.png` | One social map per focal mouse |
-| `mouse_color_legend.png` | Shared legend linking mouse IDs to colors |
+| `agonism.xlsx` | Pairwise agonism |
+| `social_distance.xlsx` | Social distance for each pair |
+| `power.xlsx` | Relative rank difference for each pair |
+| `agonism_matrix.png` | Agonism heatmap |
+| `social_distance_matrix.png` | Social distance heatmap |
+| `mouse_color_legend.png` | Mouse IDs ordered by mean rank |
+| `social_map_ego_<ID>.png` | One vector map for each focal mouse |
 
-In each workbook, rows represent focal mice and columns represent partners. Diagonal cells and undefined values are blank. On each map, the horizontal axis (`Agonism`) shows relative agonism and the vertical axis (`Power`) shows the normalized rank difference. Both axes run from −1 to 1. If the mice included in the ranking differ from the final analysis cohort, normalized rank differences can fall outside the plotted range. The full values are available in `power.xlsx`.
+Excel rows identify focal mice and columns identify partners. Diagonal cells and undefined values are blank. Colored markers along the heatmap axes match the mouse colors in the ranking legend.
