@@ -1,317 +1,285 @@
-from pathlib import Path
-import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
-from matplotlib import colormaps
-from matplotlib.lines import Line2D
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from pathlib import Path
 from urllib.parse import quote
 
+# input folders
 
-# Input files for one session.
-RANKING_CSV = Path(r"ranking.csv")
-CHASINGS_CSV = Path(r"chasings.csv")
+ranking_file = Path(r"C:\Users\agorlewicz\Desktop\EcoHab\do chmury\example data\ranking.csv")
+chasing_file = Path(r"C:\Users\agorlewicz\Desktop\EcoHab\do chmury\example data\chasings.csv")
 
-# Output directory for social maps.
-OUTPUT_DIR = Path(r"C:\Users\agorlewicz\Desktop\EcoHab\do chmury\results_agonism")
+# output folder
 
-# Analysis and plot settings.
-N_DARK_PHASES = None  # Use a positive integer or None to include all phases.
-SCORE_COL = "mu"
-FONT_SIZE = 14
+output_dir = Path(r"C:\Users\agorlewicz\Desktop\EcoHab\do chmury\results_agonism")
 
+# definitions
 
-def select_phases(df, n_dark_phases):
-    phases = sorted(df["_dark_phase_id"].unique())
-    chosen = phases if n_dark_phases is None else phases[:n_dark_phases]
-    return df[df["_dark_phase_id"].isin(chosen)].copy()
+#color map for crosscorellation matrix
 
+my_color = [
+    '#E8E8E8', '#E7E7E8', '#E5E6E7', '#E4E6E7',
+    '#E3E5E6', '#E2E4E6', '#E0E3E6', '#DFE2E5',
+    '#DEE2E5', '#DDE1E4', '#DBE0E4', '#DADFE3',
+    '#D9DEE3', '#D7DEE3', '#D6DDE2', '#D5DCE2',
+    '#D4DBE1', '#D2DAE1', '#D1DAE1', '#D0D9E0',
+    '#CED8E0', '#CDD7DF', '#CCD6DF', '#CBD6DF',
+    '#C9D5DE', '#C8D4DE', '#C7D3DD', '#C6D2DD',
+    '#C4D2DD', '#C3D1DC', '#C2D0DC', '#C0CFDB',
+    '#BFCEDB', '#BECDDA', '#BDCDDA', '#BBCCDA',
+    '#BACBD9', '#B9CAD9', '#B8C9D8', '#B6C9D8',
+    '#B5C8D8', '#B4C7D7', '#B2C6D7', '#B1C5D6',
+    '#B0C5D6', '#AFC4D6', '#ADC3D5', '#ACC2D5',
+    '#ABC1D4', '#A9C1D4', '#A8C0D4', '#A7BFD3',
+    '#A6BED3', '#A4BDD2', '#A3BDD2', '#A2BCD1',
+    '#A1BBD1', '#9FBAD1', '#9EB9D0', '#9DB9D0',
+    '#9BB8CF', '#9AB7CF', '#99B6CF', '#98B5CE',
+    '#96B5CE', '#95B4CD', '#94B3CD', '#93B2CD',
+    '#91B1CC', '#90B1CC', '#8FB0CB', '#8DAFCB',
+    '#8CAECB', '#8BADCA', '#8AADCA', '#88ACC9',
+    '#87ABC9', '#86AAC8', '#85A9C8', '#83A9C8',
+    '#82A8C7', '#81A7C7', '#7FA6C6', '#7EA5C6',
+    '#7DA5C6', '#7CA4C5', '#7AA3C5', '#79A2C4',
+    '#78A1C4', '#76A1C4', '#75A0C3', '#749FC3',
+    '#739EC2', '#719DC2', '#709DC2', '#6F9CC1',
+    '#6E9BC1', '#6C9AC0', '#6B99C0', '#6A98BF',
+    '#6898BF', '#6797BF', '#6696BE', '#6595BE',
+    '#6394BD', '#6294BD', '#6193BD', '#6092BC',
+    '#5E91BC', '#5D90BB', '#5C90BB', '#5A8FBB',
+    '#598EBA', '#588DBA', '#578CB9', '#558CB9',
+    '#548BB9', '#538AB8', '#5189B8', '#5088B7',
+    '#4F88B7', '#4E87B6', '#4C86B6', '#4B85B6',
+    '#4A84B5', '#4984B5', '#4783B4', '#4682B4'
+]
 
-def prepare_ranking(ranking, chasing, chasing_file, score_col, n_dark_phases):
-    phase_by_hour = chasing[["day", "hour", "phase_count"]].copy()
-    for column in phase_by_hour.columns:
-        phase_by_hour[column] = pd.to_numeric(
-            phase_by_hour[column], errors="coerce"
-        )
+# this function imports dataframes from csv files
 
-    if phase_by_hour.isna().any().any():
-        raise ValueError(f"{chasing_file}: invalid day, hour, or phase_count values.")
-
-    if "phase" in chasing.columns:
-        phase_by_hour = phase_by_hour.loc[chasing["phase"].eq("dark_phase")]
-
-    phase_by_hour = phase_by_hour.drop_duplicates().rename(
-        columns={"phase_count": "_dark_phase_id"}
-    )
-    phase_by_hour = select_phases(phase_by_hour, n_dark_phases)
-
-    ranking = ranking.merge(
-        phase_by_hour, on=["day", "hour"], how="left", validate="many_to_one"
-    )
-    ranking = ranking.dropna(subset=["_dark_phase_id"])
-
-    phase_values = (
-        ranking.groupby(["_dark_phase_id", "animal_id"], as_index=False)[score_col]
-        .mean()
-    )
-    scores_wide = phase_values.pivot(
-        index="_dark_phase_id", columns="animal_id", values=score_col
-    ).sort_index()
-
-    ranks_wide = scores_wide.rank(axis=1, ascending=False, method="average")
-    mean_rank = ranks_wide.mean(axis=0).rename("mean_rank")
-    return ranks_wide, mean_rank
-
-
-def prepare_chasing_matrix(chasing, chasing_file, n_dark_phases):
-    df = chasing.copy()
-
-    if df[["chaser", "chased"]].isna().any().any():
-        raise ValueError(f"{chasing_file}: missing mouse IDs.")
-
-    df["_dark_phase_id"] = pd.to_numeric(df["phase_count"], errors="coerce")
-    df["chasings"] = pd.to_numeric(df["chasings"], errors="coerce")
-
-    if df[["_dark_phase_id", "chasings"]].isna().any().any():
-        raise ValueError(f"{chasing_file}: invalid phase_count or chasings values.")
-    if (df["chasings"] < 0).any():
-        raise ValueError(f"{chasing_file}: negative chase counts.")
-
-    df = select_phases(df, n_dark_phases)
-    mice = sorted(set(df["chaser"]) | set(df["chased"]))
-
-    return (
-        df.groupby(["chaser", "chased"])["chasings"]
-        .sum()
-        .unstack(level="chased")
-        .reindex(index=mice, columns=mice)
-        .fillna(0.0)
-    )
-
-
-def calculate_individual_agonism(chasing_matrix):
-    matrix = chasing_matrix.astype(float)
-    matrix_values = matrix.to_numpy(copy=True)
-    np.fill_diagonal(matrix_values, np.nan)
-    matrix = pd.DataFrame(
-        matrix_values, index=matrix.index, columns=matrix.columns
-    )
-
-    ego_mean = matrix.mean(axis=1, skipna=True)
-    c_matrix = matrix.div(ego_mean, axis=0)
-    agonism = (c_matrix - 1) / (c_matrix + 1)
-    return agonism, ego_mean, c_matrix
-
-
-def load_session(
-    ranking_file, chasing_file, score_col=SCORE_COL, n_dark_phases=N_DARK_PHASES
-):
-    ranking_file = Path(ranking_file)
-    chasing_file = Path(chasing_file)
-
-    folder_name = ranking_file.parent.name
-    name = {
-        "control-before": "Pre-surgery",
-        "control-after": "Post-surgery",
-    }.get(folder_name, folder_name)
-
+def load_data(ranking_file, chasing_file):
     ranking = pd.read_csv(ranking_file, dtype={"animal_id": str})
     chasing = pd.read_csv(chasing_file, dtype={"chaser": str, "chased": str})
+    return ranking, chasing
 
-    ranks, mean_rank = prepare_ranking(
-        ranking, chasing, chasing_file, score_col, n_dark_phases
-    )
-    chasing_matrix = prepare_chasing_matrix(chasing, chasing_file, n_dark_phases)
+# this function calculates ranking
+# ranks contains the rank of each animal in each phase, 
+# and mean_rank contains each animal’s average rank across all phases.
 
-    mice = sorted(set(mean_rank.index) & set(chasing_matrix.index))
-    if len(mice) < 2:
-        raise ValueError(
-            "Power calculation requires at least two mice present in both "
-            "the ranking and the chasing matrix for this session."
-        )
+def calculate_ranking(ranking, chasing):
+    phases = chasing[["day", "hour", "phase", "phase_count"]].drop_duplicates()
+    data = ranking.merge(phases, on=["day", "hour", "phase"])
 
-    mean_rank = mean_rank.reindex(mice)
-    chasing_matrix = chasing_matrix.reindex(index=mice, columns=mice)
-    agonism, ego_mean, c_matrix = calculate_individual_agonism(chasing_matrix)
+    mean_mu = data.groupby(["phase", "phase_count", "animal_id"])["mu"].mean()
+    scores = mean_mu.unstack("animal_id")
 
-    rank = mean_rank.to_numpy(dtype=float)
-    power = (rank[:, None] - rank[None, :]) / (len(mice) - 1)
-    power_matrix = pd.DataFrame(power, index=mice, columns=mice)
+    ranks = scores.rank(axis=1, ascending=False)
+    mean_rank = ranks.mean().sort_values(kind="stable").rename("mean_rank")
+    return ranks, mean_rank
 
-    vectors = []
-    for ego in mice:
-        for partner in mice:
-            if ego == partner:
-                continue
+# this function plots ID of each mouse based on the ranking
+# dominant mouse is at the top
 
-            x = float(agonism.loc[ego, partner])
-            y = float(power_matrix.loc[ego, partner])
-            vectors.append(
-                {
-                    "session": name,
-                    "ego": ego,
-                    "partner": partner,
-                    "raw_chasing": chasing_matrix.loc[ego, partner],
-                    "ego_mean_chasing": ego_mean.loc[ego],
-                    "c": c_matrix.loc[ego, partner],
-                    "agonism": x,
-                    "power": y,
-                    "distance": float(np.hypot(x, y)),
-                }
-            )
+def plot_ranking_legend(mean_rank):
+    fig1, ax = plt.subplots()
+    ax.set_axis_off()
+    for mouse_id in mean_rank.sort_values(kind="stable").index:
+        ax.scatter([], [], label=str(mouse_id))
+    ax.legend(title="ranking\n", loc="center", frameon=False)
+    return fig1
 
-    return {
-        "session": name,
-        "mice": mice,
-        "ranks": ranks,
-        "mean_rank": mean_rank,
-        "chasing_matrix": chasing_matrix,
-        "agonism_matrix": agonism,
-        "ego_mean_chasing": ego_mean,
-        "c_matrix": c_matrix,
-        "power_matrix": power_matrix,
-        "vectors": pd.DataFrame(vectors),
-    }
+# this function calculates agonism
 
-
-def plot_mouse_legend(mice, color_map):
-    handles = [
-        Line2D(
-            [0],
-            [0],
-            marker="o",
-            linestyle="None",
-            markersize=9,
-            markerfacecolor=color_map[mouse],
-            markeredgecolor=color_map[mouse],
-            label=mouse,
-        )
-        for mouse in mice
-    ]
-
-    fig, ax = plt.subplots(figsize=(5, max(2, 0.42 * len(mice) + 0.6)))
-    ax.axis("off")
-    ax.legend(handles=handles, loc="center", frameon=False, fontsize=FONT_SIZE)
-    fig.tight_layout()
-    return fig
-
-
-def plot_social_map(session, ego, color_map):
-    fig, ax = plt.subplots()
-    fig.patch.set_facecolor("white")
-    ax.set_facecolor("white")
-
-    ax.axhline(0, color="black", linewidth=0.8, zorder=1)
-    ax.axvline(0, color="black", linewidth=0.8, zorder=1)
-    ax.scatter(0, 0, s=65, color=color_map[ego], zorder=10, clip_on=False)
-    ax.annotate(
-        "Ego",
-        xy=(0, 0),
-        xytext=(6, 6),
-        textcoords="offset points",
-        fontsize=8,
-        color="black",
-    )
-
-    for other in session["mice"]:
-        if other == ego:
-            continue
-
-        agonism = session["agonism_matrix"].loc[ego, other]
-        power = session["power_matrix"].loc[ego, other]
-        ax.annotate(
-            "",
-            xy=(agonism, power),
-            xytext=(0, 0),
-            arrowprops={
-                "arrowstyle": "->",
-                "linewidth": 1.3,
-                "color": color_map[other],
-                "alpha": 0.85,
-            },
-            zorder=3,
-        )
-        ax.scatter(
-            agonism, power, s=40, color=color_map[other], zorder=5, clip_on=False
-        )
-
-    ax.set_xlim(-1, 1)
-    ax.set_ylim(-1, 1)
-    ax.set_aspect("equal", adjustable="box")
-
-    ticks = np.linspace(-1, 1, 5)
-    ax.set_xticks(ticks)
-    ax.set_yticks(ticks)
-    ax.tick_params(axis="both", labelsize=10, width=0.5, colors="black")
-    ax.set_xlabel("Agonism", fontsize=10)
-    ax.set_ylabel("Power", fontsize=10)
-    ax.set_title(session["session"], y=1.10, fontsize=10)
-
-    ax.grid(linestyle=":", linewidth=0.5, color="grey", alpha=0.9)
-    ax.spines["top"].set_visible(False)
-    ax.spines["right"].set_visible(False)
-    ax.spines["left"].set_color("#E8E8E8")
-    ax.spines["bottom"].set_color("#E8E8E8")
-
-    fig.tight_layout()
-    return fig
-
-
-def main():
-    for input_file in (RANKING_CSV, CHASINGS_CSV):
-        if not input_file.is_file():
-            raise FileNotFoundError(f"Input CSV not found: {input_file}")
-
-    session = load_session(RANKING_CSV, CHASINGS_CSV)
-    mice = session["mice"]
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-
-    # Export matrices with ego IDs as rows and partner IDs as columns.
-    agonism_matrix = session["agonism_matrix"].reindex(index=mice, columns=mice)
-    distance_matrix = (
-        session["vectors"]
-        .pivot(index="ego", columns="partner", values="distance")
+def calculate_agonism(chasing):
+    mice = sorted(set(chasing["chaser"]) | set(chasing["chased"]))
+    counts = (
+        chasing.groupby(["chaser", "chased"])["chasings"]
+        .sum()
+        .unstack("chased")
         .reindex(index=mice, columns=mice)
+        .fillna(0)
+        .astype(float)
     )
-    power_matrix = session["power_matrix"].reindex(index=mice, columns=mice)
+    for mouse in mice:
+        counts.loc[mouse, mouse] = np.nan
+    cohort_mean = np.nanmean(counts.to_numpy())
+    return (counts - cohort_mean) / (counts + cohort_mean)
 
-    # Leave the diagonal blank in each workbook.
-    diagonal = np.eye(len(mice), dtype=bool)
+# this function calculates agonism crosscorrelation matrix
 
-    for filename, matrix in (
-        ("agonism.xlsx", agonism_matrix),
-        ("social_distance.xlsx", distance_matrix),
-        ("power.xlsx", power_matrix),
-    ):
-        output_file = OUTPUT_DIR / filename
-        matrix.mask(diagonal).to_excel(
-            output_file,
-            index_label="Ego / Partner",
-            na_rep="",
-            engine="openpyxl",
-        )
-
-    # Use the same mouse colors in the legend and all social maps.
-    cmap = colormaps.get_cmap("tab20")
+def add_mouse_markers(ax, matrix, plot_ranks):
+    colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
     color_map = {
-        mouse: cmap(i / (len(mice) - 1))
-        for i, mouse in enumerate(mice)
+        mouse_id: colors[i % len(colors)]
+        for i, mouse_id in enumerate(plot_ranks.index)
     }
 
-    legend_fig = plot_mouse_legend(mice, color_map)
-    legend_file = OUTPUT_DIR / "mouse_color_legend.png"
-    legend_fig.savefig(legend_file, dpi=300, bbox_inches="tight")
+    ax.scatter(
+        np.arange(len(matrix.columns)) + 0.5,
+        np.full(len(matrix.columns), -0.03),
+        c=[color_map.get(mouse_id, "lightgrey") for mouse_id in matrix.columns],
+        s=30,
+        transform=ax.get_xaxis_transform(),
+        clip_on=False,
+    )
+    ax.scatter(
+        np.full(len(matrix.index), -0.03),
+        np.arange(len(matrix.index)) + 0.5,
+        c=[color_map.get(mouse_id, "lightgrey") for mouse_id in matrix.index],
+        s=30,
+        transform=ax.get_yaxis_transform(),
+        clip_on=False,
+    )
+    ax.xaxis.labelpad = 14
+    ax.yaxis.labelpad = 14
 
-    for ego in mice:
-        fig = plot_social_map(session, ego, color_map)
 
-        # Encode characters that could be interpreted as path separators.
-        ego_id = quote(str(ego), safe="")
-        output_file = OUTPUT_DIR / f"social_map_ego_{ego_id}.png"
+def plot_agonism_matrix(agonism, plot_ranks):
+    mouse_ids = sorted(agonism.index)
+    matrix = agonism.T.reindex(index=mouse_ids, columns=mouse_ids)
+    fig0, ax = plt.subplots()
+    sns.heatmap(
+        matrix,
+        cmap=my_color,
+        vmin=-1,
+        vmax=1,
+        center=0,
+        square=True,
+        linewidths=0.5,
+        xticklabels=False,
+        yticklabels=False,
+        cbar_kws={"shrink": 0.5, "label": "agonism"},
+        ax=ax,
+    )
 
-        fig.savefig(output_file, dpi=300, bbox_inches="tight")
+    ax.tick_params(width=0)
+    ax.spines["right"].set_visible(False)
+    ax.spines["top"].set_visible(False)
+    ax.set_title("agonism", fontsize=14)
+    ax.set_xlabel("# following mouse", fontsize=14)
+    ax.set_ylabel("# followed mouse", fontsize=14)
+    add_mouse_markers(ax, matrix, plot_ranks)
+    return fig0
 
-    plt.show()
+# this function calculates social distances and creates vector social maps
 
+def plot_social_maps():
+    ranks = mean_rank.loc[mean_rank.index.isin(agonism.index)].sort_values(kind="stable")
+    mouse_ids = ranks.index
+    n_mice = len(mouse_ids)
+    social_distance = pd.DataFrame(
+    np.nan,
+    index=mouse_ids,
+    columns=mouse_ids,)
+    power = pd.DataFrame(np.nan, index=mouse_ids, columns=mouse_ids)
+    colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
+    color_map = {
+        mouse_id: colors[i % len(colors)]
+        for i, mouse_id in enumerate(mouse_ids)
+    }
+    figures = []
+    ticks = [-1, -0.5, 0, 0.5, 1]
+    for ego in mouse_ids:
+        fig, ax = plt.subplots(figsize=(5, 5), layout="constrained")
+        ax.axhline(0, color="black", linewidth=0.8)
+        ax.axvline(0, color="black", linewidth=0.8)
+        ax.scatter(0, 0, s=65, color=color_map[ego], zorder=10)
+        ax.annotate("Ego", (0, 0), xytext=(6, 6), textcoords="offset points")
+        for partner in mouse_ids.drop(ego):
+            y = (ranks.loc[ego] - ranks.loc[partner]) / (n_mice - 1)
+            power.loc[ego, partner] = y
+            x = agonism.loc[ego, partner]
+            if pd.isna(x):
+                continue
+            social_distance.loc[ego, partner] = np.hypot(x, y)
+            color = color_map[partner]
+            ax.annotate(
+                "",
+                xy=(x, y),
+                xytext=(0, 0),
+                arrowprops={"arrowstyle": "->", "color": color, "linewidth": 1.3},
+            )
+            ax.scatter(x, y, s=40, color=color, zorder=5, clip_on=False)
+        ax.set(
+            title=str(ego+'\n'),
+            xlabel="agonism",
+            ylabel="power",
+            xlim=(-1, 1),
+            ylim=(-1, 1),
+            xticks=ticks,
+            yticks=ticks,
+        )
+        ax.set_aspect("equal")
+        ax.xaxis.label.set_size(14)
+        ax.yaxis.label.set_size(14)
+        ax.tick_params(axis="both", labelsize=12, length=6, width=1.2)
+        ax.set_axisbelow(True)
+        ax.grid(linestyle=":", linewidth=0.5, color="lightgrey")
+        for spine in ax.spines.values():
+            spine.set_color("lightgrey")
+            spine.set_linewidth(0.8)
+        figures.append(fig)
+    return figures, social_distance, power
 
-if __name__ == "__main__":
-    main()
+# this function creates social distance crosscorellation matrix
+
+def plot_social_distance_matrix(social_distance, plot_ranks):
+    mouse_ids = sorted(social_distance.index)
+    matrix = social_distance.T.reindex(index=mouse_ids, columns=mouse_ids)
+    fig2, ax = plt.subplots()
+    sns.heatmap(
+        matrix,
+        cmap=my_color,
+        vmin=0,
+        square=True,
+        linewidths=0.5,
+        xticklabels=False,
+        yticklabels=False,
+        cbar_kws={"shrink": 0.5, "label": "social distance"},
+        ax=ax,
+    )
+    ax.tick_params(width=0)
+    ax.spines["right"].set_visible(False)
+    ax.spines["top"].set_visible(False)
+    ax.set_title("social distance", fontsize=14)
+    ax.set_xlabel("# following mouse", fontsize=14)
+    ax.set_ylabel("# followed mouse", fontsize=14)
+    add_mouse_markers(ax, matrix, plot_ranks)
+    return fig2
+
+# process
+
+ranking, chasing = load_data(ranking_file, chasing_file)
+ranks, mean_rank = calculate_ranking(ranking, chasing)
+agonism = calculate_agonism(chasing)
+plot_ranks = mean_rank.loc[mean_rank.index.isin(agonism.index)].sort_values(kind="stable")
+fig0 = plot_agonism_matrix(agonism, plot_ranks)
+fig1 = plot_ranking_legend(plot_ranks)
+figures, social_distance, power = plot_social_maps()
+fig2 = plot_social_distance_matrix(social_distance, plot_ranks)
+output_dir.mkdir(parents=True, exist_ok=True)
+
+# save results
+
+mice = sorted(plot_ranks.index)
+diagonal = np.eye(len(mice), dtype=bool)
+for filename, matrix in (
+    ("agonism.xlsx", agonism),
+    ("social_distance.xlsx", social_distance),
+    ("power.xlsx", power),
+):
+    matrix.reindex(index=mice, columns=mice).mask(diagonal).to_excel(
+        output_dir / filename,
+        index_label="Ego / Partner",
+        na_rep="",
+        engine="openpyxl",
+    )
+fig0.savefig(output_dir / "agonism_matrix.png", dpi=300, bbox_inches="tight")
+fig1.savefig(output_dir / "mouse_color_legend.png", dpi=300, bbox_inches="tight")
+fig2.savefig(output_dir / "social_distance_matrix.png", dpi=300, bbox_inches="tight")
+for ego, fig in zip(plot_ranks.index, figures):
+    ego_id = quote(str(ego), safe="")
+    fig.savefig(
+        output_dir / f"social_map_ego_{ego_id}.png",
+        dpi=300,
+        bbox_inches="tight",
+    )
+plt.show()
