@@ -215,6 +215,7 @@ def plot_social_distance_matrix(social_distance, plot_ranks):
         matrix,
         cmap=my_color,
         vmin=0,
+        vmax=1,
         square=True,
         linewidths=0.5,
         xticklabels=False,
