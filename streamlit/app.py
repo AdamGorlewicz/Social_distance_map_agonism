@@ -1,4 +1,5 @@
 from io import BytesIO
+from pathlib import Path
 from threading import Lock
 from zipfile import ZIP_DEFLATED, ZipFile
 
@@ -79,31 +80,42 @@ def map_filename(mouse):
 def main():
     st.set_page_config(page_title="Eco-HAB | Agonism Maps", layout="wide")
     st.title("Eco-HAB Social Maps")
+    st.caption("Agonism · Ranking · Social Distance")
 
     with st.sidebar:
         ranking = st.file_uploader("Ranking", type="csv", key="ranking")
         chasing = st.file_uploader("Chases", type="csv", key="chasing")
 
-    if ranking is None or chasing is None:
-        st.session_state.pop("analysis", None)
-        st.info("Upload ranking.csv and chasings.csv to begin.")
-        return
+        use_example = st.button("Use example data")
 
-    inputs = (ranking.file_id, chasing.file_id)
-    if st.session_state.get("analysis_inputs") != inputs:
+    uploads_ready = ranking is not None and chasing is not None
+    upload_ids = (ranking.file_id, chasing.file_id) if uploads_ready else None
+    if st.session_state.get("upload_ids") != upload_ids:
         st.session_state.pop("analysis", None)
-    if st.button("Generate maps", type="primary"):
+        st.session_state["upload_ids"] = upload_ids
+
+    generate = uploads_ready and st.button("Generate maps", type="primary")
+    if use_example or generate:
         st.session_state.pop("analysis", None)
         try:
             with st.spinner("Calculating matrices and generating maps…"):
+                if use_example:
+                    folder = Path(__file__).resolve().parent
+                    ranking = folder / "ranking.csv"
+                    chasing = folder / "chasings.csv"
                 st.session_state.analysis = analyze(ranking, chasing)
-                st.session_state.analysis_inputs = inputs
+                st.session_state.analysis_source = "Example data" if use_example else "Uploaded data"
+        except FileNotFoundError:
+            st.error("Place ranking.csv and chasings.csv next to app.py to use example data.")
         except (KeyError, ValueError, TypeError) as error:
             st.error(f"Check your CSV files. {error}")
 
     if "analysis" not in st.session_state:
+        if not uploads_ready and not use_example:
+            st.info("Upload ranking.csv and chasings.csv or select Use example data.")
         return
 
+    st.caption(st.session_state.get("analysis_source", "Results"))
     ranks, images, archive, agonism, distance = st.session_state.analysis
     st.download_button(
         "Download results (ZIP)", archive, "results_agonism.zip", "application/zip"

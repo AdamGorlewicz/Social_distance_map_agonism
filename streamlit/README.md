@@ -27,3 +27,7 @@ Upload two CSVs from the same recording session and click **Generate maps**.
 At least two mice must appear in both datasets. Agonism is normalized to the cohort mean across directed non-self pairs. Power is the mean rank difference divided by the number of shared mice minus one. Social distance is the vector length from `(0, 0)` to `(agonism, power)`.
 
 **Download results (ZIP)** downloads three Excel matrices and the PNG figures. No sample data are required in the GitHub repository.
+
+## Example data
+
+To enable **Use example data**, add `ranking.csv` and `chasings.csv` next to `app.py` in your GitHub repository. The button analyzes those files directly.
