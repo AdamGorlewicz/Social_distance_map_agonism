@@ -205,7 +205,7 @@ def plot_social_maps(agonism, ranks):
         figures.append(fig)
     return figures, social_distance, power
 
-# this function creates social distance crosscorellation matrix
+# this function creates social distance crosscorrelation matrix
 
 def plot_social_distance_matrix(social_distance, plot_ranks):
     mouse_ids = sorted(social_distance.index)
@@ -215,7 +215,7 @@ def plot_social_distance_matrix(social_distance, plot_ranks):
         matrix,
         cmap=my_color,
         vmin=0,
-        vmax=1,
+        vmax=1.415,
         square=True,
         linewidths=0.5,
         xticklabels=False,
