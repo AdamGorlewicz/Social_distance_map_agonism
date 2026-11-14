@@ -83,8 +83,9 @@ def main():
 
     with st.sidebar:
         ranking = st.file_uploader("Ranking", type="csv", key="ranking")
-        chasing = st.file_uploader("Chases", type="csv", key="chasing")
+        chasing = st.file_uploader("Chasings", type="csv", key="chasing")
 
+        st.markdown("Demo")
         use_example = st.button("Load example data")
 
     uploads_ready = ranking is not None and chasing is not None
