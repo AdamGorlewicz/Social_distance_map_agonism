@@ -80,7 +80,6 @@ def map_filename(mouse):
 def main():
     st.set_page_config(page_title="Eco-HAB | Agonism Maps", layout="wide")
     st.title("Eco-HAB Social Maps")
-    st.caption("Agonism · Ranking · Social Distance")
 
     with st.sidebar:
         ranking = st.file_uploader("Ranking", type="csv", key="ranking")
@@ -112,7 +111,7 @@ def main():
 
     if "analysis" not in st.session_state:
         if not uploads_ready and not use_example:
-            st.info("Upload ranking.csv and chasings.csv or select Use example data.")
+            st.info("Upload files with ranking and chasings data or select 'Use example data'.")
         return
 
     st.caption(st.session_state.get("analysis_source", "Results"))
