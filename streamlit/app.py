@@ -109,17 +109,20 @@ def main():
     st.download_button(
         "Download results (ZIP)", archive, "results_agonism.zip", "application/zip"
     )
-    matrices, maps, legend = st.tabs(["Matrices", "Social Maps", "Ranking"])
-    with matrices:
-        left, right = st.columns(2)
-        left.image(images["agonism_matrix.png"], caption="Agonism")
-        right.image(images["social_distance_matrix.png"], caption="Social Distance")
-    with maps:
-        ego = st.selectbox("Focal mouse", ranks.index)
-        st.image(images[map_filename(ego)], width=560)
-    with legend:
+    ranking_tab, agonism_tab, maps_tab, distance_tab = st.tabs(
+        ["Ranking", "Agonism", "Social Maps", "Social Distance"]
+    )
+    with ranking_tab:
         st.image(images["mouse_color_legend.png"], width=560)
         st.dataframe(ranks.to_frame())
+    with agonism_tab:
+        st.image(images["agonism_matrix.png"], width=560)
+    with maps_tab:
+        ego = st.selectbox("Focal mouse", ranks.index)
+        st.image(images[map_filename(ego)], width=560)
+    with distance_tab:
+        st.image(images["social_distance_matrix.png"], width=560)
+
 
 
 if __name__ == "__main__":
