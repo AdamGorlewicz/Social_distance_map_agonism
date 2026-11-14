@@ -79,7 +79,7 @@ def map_filename(mouse):
 
 def main():
     st.set_page_config(page_title="Eco-HAB | Agonism Maps", layout="wide")
-    st.title("Eco-HAB Social Maps")
+    st.title("Eco-HAB Social Maps (agonism)")
 
     with st.sidebar:
         ranking = st.file_uploader("Ranking", type="csv", key="ranking")
