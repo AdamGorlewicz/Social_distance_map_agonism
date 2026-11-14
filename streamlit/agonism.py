@@ -168,7 +168,7 @@ def plot_social_maps(agonism, ranks):
         ax.axhline(0, color="black", linewidth=0.8)
         ax.axvline(0, color="black", linewidth=0.8)
         ax.scatter(0, 0, s=65, color=color_map[ego], zorder=10)
-        ax.annotate("Ego", (0, 0), xytext=(6, 6), textcoords="offset points")
+        ax.annotate("ego", (0, 0), xytext=(6, 6), textcoords="offset points")
         for partner in mouse_ids.drop(ego):
             y = (ranks.loc[ego] - ranks.loc[partner]) / (n_mice - 1)
             power.loc[ego, partner] = y
