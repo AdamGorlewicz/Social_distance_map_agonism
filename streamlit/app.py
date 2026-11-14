@@ -85,7 +85,7 @@ def main():
         ranking = st.file_uploader("Ranking", type="csv", key="ranking")
         chasing = st.file_uploader("Chases", type="csv", key="chasing")
 
-        use_example = st.button("Use example data")
+        use_example = st.button("Load example data")
 
     uploads_ready = ranking is not None and chasing is not None
     upload_ids = (ranking.file_id, chasing.file_id) if uploads_ready else None
