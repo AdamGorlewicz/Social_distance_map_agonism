@@ -69,7 +69,7 @@ def analyze(ranking_file, chasing_file):
                 workbook, index_label="Ego / Partner", engine="openpyxl"
             )
             results.writestr(name, workbook.getvalue())
-    return ranks, images, archive.getvalue()
+    return ranks, images, archive.getvalue(), agonism, distance
 
 
 def map_filename(mouse):
@@ -105,7 +105,7 @@ def main():
     if "analysis" not in st.session_state:
         return
 
-    ranks, images, archive = st.session_state.analysis
+    ranks, images, archive, agonism, distance = st.session_state.analysis
     st.download_button(
         "Download results (ZIP)", archive, "results_agonism.zip", "application/zip"
     )
@@ -117,11 +117,13 @@ def main():
         st.dataframe(ranks.to_frame())
     with agonism_tab:
         st.image(images["agonism_matrix.png"], width=560)
+        st.dataframe(agonism.T.sort_index().sort_index(axis=1).round(3))
     with maps_tab:
         ego = st.selectbox("Focal mouse", ranks.index)
         st.image(images[map_filename(ego)], width=560)
     with distance_tab:
         st.image(images["social_distance_matrix.png"], width=560)
+        st.dataframe(distance.T.sort_index().sort_index(axis=1).round(3))
 
 
 
