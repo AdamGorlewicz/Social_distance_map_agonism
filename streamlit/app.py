@@ -35,7 +35,7 @@ def analyze(ranking_file, chasing_file):
     agonism = calculate_agonism(chasing)
     ranks = mean_rank.loc[mean_rank.index.isin(agonism.index)]
     if len(ranks) < 2:
-        raise ValueError("W obu plikach muszą występować co najmniej dwie wspólne myszy.")
+        raise ValueError("At least two mice must appear in both files.")
 
     with plot_lock():
         figures_before = set(plt.get_fignums())
@@ -77,45 +77,45 @@ def map_filename(mouse):
 
 
 def main():
-    st.set_page_config(page_title="Eco-HAB | Mapy agonizmu", layout="wide")
-    st.title("Mapy społeczne Eco-HAB")
-    st.caption("Agonizm · Ranking · Dystans społeczny")
+    st.set_page_config(page_title="Eco-HAB | Agonism Maps", layout="wide")
+    st.title("Eco-HAB Social Maps")
+    st.caption("Agonism · Ranking · Social Distance")
 
     with st.sidebar:
         ranking = st.file_uploader("Ranking", type="csv", key="ranking")
-        chasing = st.file_uploader("Pościgi", type="csv", key="chasing")
+        chasing = st.file_uploader("Chases", type="csv", key="chasing")
 
     if ranking is None or chasing is None:
         st.session_state.pop("analysis", None)
-        st.info("Wczytaj ranking.csv i chasings.csv, aby rozpocząć analizę.")
+        st.info("Upload ranking.csv and chasings.csv to begin.")
         return
 
     inputs = (ranking.file_id, chasing.file_id)
     if st.session_state.get("analysis_inputs") != inputs:
         st.session_state.pop("analysis", None)
-    if st.button("Oblicz mapy", type="primary"):
+    if st.button("Generate maps", type="primary"):
         st.session_state.pop("analysis", None)
         try:
-            with st.spinner("Obliczam macierze i rysuję mapy…"):
+            with st.spinner("Calculating matrices and generating maps…"):
                 st.session_state.analysis = analyze(ranking, chasing)
                 st.session_state.analysis_inputs = inputs
         except (KeyError, ValueError, TypeError) as error:
-            st.error(f"Sprawdź pliki CSV. {error}")
+            st.error(f"Check your CSV files. {error}")
 
     if "analysis" not in st.session_state:
         return
 
     ranks, images, archive = st.session_state.analysis
     st.download_button(
-        "Pobierz wyniki ZIP", archive, "results_agonism.zip", "application/zip"
+        "Download results (ZIP)", archive, "results_agonism.zip", "application/zip"
     )
-    matrices, maps, legend = st.tabs(["Macierze", "Mapy społeczne", "Ranking"])
+    matrices, maps, legend = st.tabs(["Matrices", "Social Maps", "Ranking"])
     with matrices:
         left, right = st.columns(2)
-        left.image(images["agonism_matrix.png"], caption="Agonizm")
-        right.image(images["social_distance_matrix.png"], caption="Dystans społeczny")
+        left.image(images["agonism_matrix.png"], caption="Agonism")
+        right.image(images["social_distance_matrix.png"], caption="Social Distance")
     with maps:
-        ego = st.selectbox("Mysz Ego", ranks.index)
+        ego = st.selectbox("Focal mouse", ranks.index)
         st.image(images[map_filename(ego)], width=560)
     with legend:
         st.image(images["mouse_color_legend.png"], width=560)
